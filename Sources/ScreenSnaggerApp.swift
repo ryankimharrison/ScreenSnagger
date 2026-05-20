@@ -104,6 +104,9 @@ class ScreenshotManager: ObservableObject {
             applyScreenshotThumbnail()
         }
     }
+    @Published var ocrRenameEnabled: Bool {
+        didSet { UserDefaults.standard.set(ocrRenameEnabled, forKey: "ocrRenameEnabled") }
+    }
     @Published var outputDirectory: URL? {
         didSet {
             saveDirectoryPath()
@@ -138,6 +141,7 @@ class ScreenshotManager: ObservableObject {
         // Default off: the app was designed around instant clipboard + immediate file save,
         // which requires the macOS floating thumbnail to be disabled.
         self.showScreenshotThumbnail = UserDefaults.standard.object(forKey: "showScreenshotThumbnail") as? Bool ?? false
+        self.ocrRenameEnabled = UserDefaults.standard.object(forKey: "ocrRenameEnabled") as? Bool ?? true
 
         let modeRaw = UserDefaults.standard.string(forKey: "saveMode") ?? SaveMode.saveToFolder.rawValue
         self.saveMode = SaveMode(rawValue: modeRaw) ?? .saveToFolder
@@ -476,6 +480,7 @@ class ScreenshotManager: ObservableObject {
     // MARK: - OCR Rename
 
     private func ocrRename(_ url: URL) -> URL {
+        guard ocrRenameEnabled else { return url }
         let filename = url.deletingPathExtension().lastPathComponent
         guard filename.hasPrefix("Screenshot") || filename.hasPrefix("Screen Shot") else {
             return url
@@ -631,6 +636,8 @@ struct MenuBarView: View {
     @EnvironmentObject var manager: ScreenshotManager
     @State private var isHoveringQuit = false
     @State private var recentsExpanded = false
+    @State private var showModeInfo = false
+    @State private var showPrefsInfo = false
 
     private var visibleRecents: [ScreenshotEntry] {
         let limit = recentsExpanded ? 10 : 3
@@ -646,6 +653,70 @@ struct MenuBarView: View {
                 return "Saves to \(dir.lastPathComponent) folder"
             }
             return "Saves to folder"
+        }
+    }
+
+    private var modeInfoEntries: [(String, String)] {
+        var entries: [(String, String)] = [
+            ("Auto-delete after copy",
+             "Screenshots are copied to your clipboard and then deleted from your Desktop two seconds later. Nothing is saved to disk."),
+            ("Save to folder",
+             "Screenshots are saved to the folder you pick. The original timestamp filename (e.g. Screenshot 2026-05-20 at 9.42 PM.png) is used unless \"Auto-rename with detected text\" is on.")
+        ]
+        if manager.saveMode == .saveToFolder {
+            entries.append(("Also copy to clipboard",
+                            "Adds the screenshot to your clipboard as soon as it's saved, so you can paste it without opening the file."))
+        }
+        return entries
+    }
+
+    private let prefsInfoEntries: [(String, String)] = [
+        ("Launch at login",
+         "Starts ScreenSnagger automatically when you log in to your Mac. The app needs to be running for any screenshot you take to be processed."),
+        ("Auto-rename with detected text",
+         "Uses your Mac's on-device text recognition to summarize the text in each screenshot and use it as the filename. Nothing leaves your Mac. If no readable text is found, the original name is kept."),
+        ("Show floating thumbnail",
+         "macOS's built-in screenshot preview that floats in the bottom-right corner. ScreenSnagger turns this off by default so screenshots are saved and copied to your clipboard instantly. Turning it on adds about a 5-second delay before the file is available.")
+    ]
+
+    @ViewBuilder
+    private func sectionInfo(isOpen: Binding<Bool>, entries: [(String, String)]) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button(action: { withAnimation(.easeInOut(duration: 0.18)) { isOpen.wrappedValue.toggle() } }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isOpen.wrappedValue ? "info.circle.fill" : "info.circle")
+                            .font(.system(size: 10))
+                        Text(isOpen.wrappedValue ? "Hide info" : "What do these do?")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(isOpen.wrappedValue ? .accentColor : Color(nsColor: .tertiaryLabelColor))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 2)
+
+            if isOpen.wrappedValue {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(entries, id: \.0) { entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.0)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.primary)
+                            Text(entry.1)
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+            }
         }
     }
 
@@ -744,21 +815,10 @@ struct MenuBarView: View {
                     )
                 }
 
-                // Auto-delete hint
-                if manager.saveMode == .autoDelete {
-                    HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 10))
-                        Text("Screenshots are copied to clipboard then deleted")
-                            .font(.system(size: 10))
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 2)
-                }
+                sectionInfo(
+                    isOpen: $showModeInfo,
+                    entries: modeInfoEntries
+                )
             }
             .padding(.vertical, 6)
             .glassEffect(in: .rect(cornerRadius: 12))
@@ -768,14 +828,24 @@ struct MenuBarView: View {
             // ── Preferences ──
             VStack(spacing: 0) {
                 SettingToggle(
+                    icon: "sunrise",
+                    label: "Launch at login",
+                    isOn: $manager.launchAtLogin
+                )
+                SettingToggle(
+                    icon: "text.viewfinder",
+                    label: "Auto-rename with detected text",
+                    isOn: $manager.ocrRenameEnabled
+                )
+                SettingToggle(
                     icon: "rectangle.on.rectangle",
                     label: "Show floating thumbnail",
                     isOn: $manager.showScreenshotThumbnail
                 )
-                SettingToggle(
-                    icon: "sunrise",
-                    label: "Launch at login",
-                    isOn: $manager.launchAtLogin
+
+                sectionInfo(
+                    isOpen: $showPrefsInfo,
+                    entries: prefsInfoEntries
                 )
             }
             .padding(.vertical, 4)
@@ -854,7 +924,7 @@ struct SettingToggle: View {
     @State private var isHovering = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 12))
                 .foregroundColor(isOn ? .accentColor : .secondary)
@@ -863,8 +933,10 @@ struct SettingToggle: View {
             Text(label)
                 .font(.system(size: 12))
                 .foregroundColor(.primary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Spacer()
+            Spacer(minLength: 4)
 
             Toggle("", isOn: $isOn)
                 .toggleStyle(.switch)
@@ -894,7 +966,7 @@ struct ModeRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 12))
                     .foregroundColor(isSelected ? .accentColor : .secondary)
@@ -903,8 +975,10 @@ struct ModeRow: View {
                 Text(label)
                     .font(.system(size: 12))
                     .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 ZStack {
                     Circle()
