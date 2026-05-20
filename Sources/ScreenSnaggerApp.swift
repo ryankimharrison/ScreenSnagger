@@ -4,7 +4,7 @@ import ServiceManagement
 import Vision
 
 @main
-struct ScreenSnagApp: App {
+struct ScreenSnaggerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -111,7 +111,10 @@ class ScreenshotManager: ObservableObject {
         }
     }
     @Published var recentScreenshots: [ScreenshotEntry] = [] {
-        didSet { saveRecents() }
+        didSet {
+            saveRecents()
+            syncEntryWatchers()
+        }
     }
 
     /// Whether clipboard copy should happen — always true in auto-delete, user toggle in save mode
@@ -171,6 +174,40 @@ class ScreenshotManager: ObservableObject {
         }
     }
 
+    // Per-entry kqueue watchers so a recent disappears in real time when its file is
+    // deleted/renamed/moved (Finder, Trash empty, `rm`, etc.) — not just on next click.
+    private var entryWatchers: [UUID: DispatchSourceFileSystemObject] = [:]
+
+    private func syncEntryWatchers() {
+        let currentIDs = Set(recentScreenshots.map(\.id))
+
+        // Tear down watchers for entries that left the list
+        for id in entryWatchers.keys where !currentIDs.contains(id) {
+            entryWatchers[id]?.cancel()
+            entryWatchers[id] = nil
+        }
+
+        // Attach watchers to new entries
+        for entry in recentScreenshots where entryWatchers[entry.id] == nil {
+            guard FileManager.default.fileExists(atPath: entry.url.path) else { continue }
+            let fd = open(entry.url.path, O_EVTONLY)
+            guard fd != -1 else { continue }
+
+            let source = DispatchSource.makeFileSystemObjectSource(
+                fileDescriptor: fd,
+                eventMask: [.delete, .rename],
+                queue: .main
+            )
+            let entryID = entry.id
+            source.setEventHandler { [weak self] in
+                self?.recentScreenshots.removeAll { $0.id == entryID }
+            }
+            source.setCancelHandler { [fd] in close(fd) }
+            source.resume()
+            entryWatchers[entry.id] = source
+        }
+    }
+
     // MARK: - Save Mode
 
     func reapplySaveMode() {
@@ -198,7 +235,7 @@ class ScreenshotManager: ObservableObject {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            print("ScreenSnag: login item toggle failed — \(error)")
+            print("ScreenSnagger: login item toggle failed — \(error)")
         }
         // Sync our @Published with the actual system state — but only if it changed.
         // Assigning to launchAtLogin always re-fires didSet (even with the same value),
@@ -342,7 +379,7 @@ class ScreenshotManager: ObservableObject {
                     try FileManager.default.moveItem(at: url, to: dest)
                     workingURL = dest
                 } catch {
-                    print("ScreenSnag: move to chosen folder failed (\(url.path) → \(dest.path)): \(error)")
+                    print("ScreenSnagger: move to chosen folder failed (\(url.path) → \(dest.path)): \(error)")
                 }
             }
         }
@@ -392,7 +429,7 @@ class ScreenshotManager: ObservableObject {
 
     private func copyImageToClipboard(at url: URL) {
         guard let fileData = try? Data(contentsOf: url) else {
-            print("ScreenSnag: clipboard read failed for \(url.path)")
+            print("ScreenSnagger: clipboard read failed for \(url.path)")
             return
         }
 
@@ -547,7 +584,7 @@ final class DirectoryWatcher {
     func start() {
         let fd = open(url.path, O_EVTONLY)
         guard fd != -1 else {
-            print("ScreenSnag: failed to open \(url.path) for watching (errno \(errno))")
+            print("ScreenSnagger: failed to open \(url.path) for watching (errno \(errno))")
             return
         }
         self.fileDescriptor = fd
@@ -584,6 +621,18 @@ struct MenuBarView: View {
         return Array(manager.recentScreenshots.prefix(limit))
     }
 
+    private var headerSubtitle: String {
+        switch manager.saveMode {
+        case .autoDelete:
+            return "Auto-delete"
+        case .saveToFolder:
+            if let dir = manager.outputDirectory {
+                return "Saves to \(dir.lastPathComponent) folder"
+            }
+            return "Saves to folder"
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
 
@@ -604,11 +653,13 @@ struct MenuBarView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("ScreenSnag")
+                    Text("ScreenSnagger")
                         .font(.system(size: 13, weight: .semibold))
-                    Text(manager.saveMode == .autoDelete ? "Auto-delete" : "Saving")
+                    Text(headerSubtitle)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
 
                 Spacer()

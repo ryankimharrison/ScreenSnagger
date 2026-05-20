@@ -1,4 +1,4 @@
-name: ScreenSnag
+name: ScreenSnagger
 options:
   bundleIdPrefix: com.ryanharrison
   deploymentTarget:
@@ -6,7 +6,7 @@ options:
   xcodeVersion: "15.0"
 
 targets:
-  ScreenSnag:
+  ScreenSnagger:
     type: application
     platform: macOS
     sources:
@@ -16,12 +16,12 @@ targets:
         buildPhase: none
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ryanharrison.screensnag
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryanharrison.screensnagger
         INFOPLIST_FILE: Resources/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Resources/ScreenSnag.entitlements
+        CODE_SIGN_ENTITLEMENTS: Resources/ScreenSnagger.entitlements
         CODE_SIGN_STYLE: Automatic
         MACOSX_DEPLOYMENT_TARGET: "26.0"
         SWIFT_VERSION: "5.10"
-        PRODUCT_NAME: ScreenSnag
+        PRODUCT_NAME: ScreenSnagger
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_APP_SANDBOX: NO

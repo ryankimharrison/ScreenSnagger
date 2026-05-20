@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🔧 ScreenSnag project setup"
+echo "🔧 ScreenSnagger project setup"
 echo ""
 
 # Check for Xcode
@@ -27,12 +27,12 @@ else
 fi
 
 # Generate Xcode project
-echo "⏳ Generating ScreenSnag.xcodeproj..."
+echo "⏳ Generating ScreenSnagger.xcodeproj..."
 cd "$(dirname "$0")"
 xcodegen generate
 
 echo ""
 echo "✅ Done! You can now:"
-echo "   • Open ScreenSnag.xcodeproj in Xcode and hit ⌘R"
-echo "   • Or build from CLI: xcodebuild -project ScreenSnag.xcodeproj -scheme ScreenSnag build"
+echo "   • Open ScreenSnagger.xcodeproj in Xcode and hit ⌘R"
+echo "   • Or build from CLI: xcodebuild -project ScreenSnagger.xcodeproj -scheme ScreenSnagger build"
 echo ""

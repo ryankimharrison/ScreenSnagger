@@ -4,9 +4,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>ScreenSnag</string>
+    <string>ScreenSnagger</string>
     <key>CFBundleDisplayName</key>
-    <string>ScreenSnag</string>
+    <string>ScreenSnagger</string>
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleVersion</key>

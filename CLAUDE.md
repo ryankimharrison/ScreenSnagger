@@ -1,4 +1,4 @@
-# CLAUDE.md — ScreenSnag
+# CLAUDE.md — ScreenSnagger
 
 ## Project
 
@@ -20,15 +20,15 @@ No third-party dependencies. No SPM packages. No CocoaPods. **No notifications**
 ## Project Layout
 
 ```
-ScreenSnag/
+ScreenSnagger/
 ├── CLAUDE.md              ← you are here
 ├── project.yml            ← XcodeGen spec (generates .xcodeproj)
 ├── setup.sh               ← run this first: installs XcodeGen, generates project
 ├── Sources/
-│   └── ScreenSnagApp.swift   ← entire app (single file)
+│   └── ScreenSnaggerApp.swift   ← entire app (single file)
 └── Resources/
     ├── Info.plist
-    └── ScreenSnag.entitlements
+    └── ScreenSnagger.entitlements
 ```
 
 ## Build
@@ -38,23 +38,23 @@ ScreenSnag/
 chmod +x setup.sh
 ./setup.sh
 ```
-This installs XcodeGen (if missing) via Homebrew and generates `ScreenSnag.xcodeproj`.
+This installs XcodeGen (if missing) via Homebrew and generates `ScreenSnagger.xcodeproj`.
 
 ### Build & run
 ```bash
-xcodebuild -project ScreenSnag.xcodeproj -scheme ScreenSnag -configuration Debug build
+xcodebuild -project ScreenSnagger.xcodeproj -scheme ScreenSnagger -configuration Debug build
 ```
 
-Or open `ScreenSnag.xcodeproj` in Xcode and hit ⌘R.
+Or open `ScreenSnagger.xcodeproj` in Xcode and hit ⌘R.
 
 ### Clean build
 ```bash
-xcodebuild -project ScreenSnag.xcodeproj -scheme ScreenSnag clean
+xcodebuild -project ScreenSnagger.xcodeproj -scheme ScreenSnagger clean
 ```
 
 ## Architecture
 
-Everything is in `ScreenSnagApp.swift`. One file. Sections:
+Everything is in `ScreenSnaggerApp.swift`. One file. Sections:
 
 1. **App entry** — `MenuBarExtra` with `.window` style
 2. **AppDelegate** — disables macOS's floating screenshot thumbnail on launch, re-applies save-mode defaults after the thumbnail-disable killall, starts the directory watcher, registers login item on first launch, restores the thumbnail on terminate
@@ -79,7 +79,7 @@ Everything is in `ScreenSnagApp.swift`. One file. Sections:
 - **Recents persist across mode switches AND app restarts** — old save-mode entries remain visible in auto-delete mode; stored as JSON in UserDefaults under `recentScreenshots.v1`
 - **Recents**: collapsible, 3 collapsed / 10 expanded, real thumbnails, dedup by file path, deleted files pruned on popover open. Click → reveal in Finder (`activateFileViewerSelecting`). Drag → `NSItemProvider`
 - **Recents survive folder changes**: each entry stores an absolute file path, so changing the save folder doesn't invalidate prior recents
-- **Recents prune on delete**: clicking a recent whose underlying file is gone (manually deleted, Trash emptied) removes the entry instead of silently doing nothing; `pruneStaleRecents()` is also called on popover open
+- **Recents prune on delete**: each entry has its own kqueue (`DispatchSourceFileSystemObject` with `eventMask: [.delete, .rename]`) watching the underlying file — if the file disappears (Finder delete, `rm`, Trash empty, rename), the entry vanishes from the popover in real time without needing a click. Click-on-deleted-recent and `.onAppear` of MenuBarView also call `pruneStaleRecents()` as belt-and-suspenders
 - **Launch-at-login**: user preference is persisted in `launchAtLoginPref` (defaults to ON for new installs). `reconcileLaunchAtLogin()` runs on every launch and re-registers if the system lost the registration (e.g. app moved, fresh DerivedData path, denied prompt). Uses `SMAppService.mainApp.register()` — works for installed apps in `/Applications` without entitlements
 - **OCR rename**: only on generic `Screenshot...` / `Screen Shot...` filenames, skips window captures (already named well)
 - **Info hint**: "Screenshots are copied to clipboard then deleted" shown in auto-delete mode, wraps to two lines if needed
@@ -108,7 +108,7 @@ SMAppService login item works with development signing identity.
 
 - Do not introduce third-party dependencies
 - Do not sandbox the app (needs `defaults write` and `killall SystemUIServer`)
-- Do not split into multiple Swift files — keep everything in `ScreenSnagApp.swift`
+- Do not split into multiple Swift files — keep everything in `ScreenSnaggerApp.swift`
 - Do not add a notifications subsystem — explicitly removed
 - Menu bar icon: `camera.viewfinder` (SF Symbols)
 - Popover width: 280pt, Liquid Glass (`.glassEffect(in: .rect(cornerRadius: 12))`) on each section container (Mode Selection, Preferences, Recently Saved). No popover-wide material
