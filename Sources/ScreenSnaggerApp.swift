@@ -24,18 +24,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let screenshotManager = ScreenshotManager()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        screenshotManager.disableScreenshotThumbnail()
-        // Re-apply save-mode defaults after the thumbnail-disable killall, so the `location`
-        // setting is guaranteed to be in effect for the next screenshot.
+        // Apply the user's thumbnail preference (default off → call disableScreenshotThumbnail).
+        screenshotManager.applyScreenshotThumbnail()
+        // Re-apply save-mode defaults after the thumbnail killall, so the `location` setting
+        // is guaranteed to be in effect for the next screenshot.
         screenshotManager.reapplySaveMode()
         screenshotManager.startWatching()
         // Ensure macOS's login-item registration matches the user's preference. For new
         // installs the default preference is ON, so this registers the app at first launch.
         screenshotManager.reconcileLaunchAtLogin()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        screenshotManager.restoreScreenshotThumbnail()
     }
 }
 
@@ -101,6 +98,12 @@ class ScreenshotManager: ObservableObject {
             setLaunchAtLogin(launchAtLogin)
         }
     }
+    @Published var showScreenshotThumbnail: Bool {
+        didSet {
+            UserDefaults.standard.set(showScreenshotThumbnail, forKey: "showScreenshotThumbnail")
+            applyScreenshotThumbnail()
+        }
+    }
     @Published var outputDirectory: URL? {
         didSet {
             saveDirectoryPath()
@@ -132,6 +135,9 @@ class ScreenshotManager: ObservableObject {
         // registration (e.g. app moved, fresh DerivedData path) gets re-applied on the
         // next launch instead of silently dropping. Default ON for new installs.
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLoginPref") as? Bool ?? true
+        // Default off: the app was designed around instant clipboard + immediate file save,
+        // which requires the macOS floating thumbnail to be disabled.
+        self.showScreenshotThumbnail = UserDefaults.standard.object(forKey: "showScreenshotThumbnail") as? Bool ?? false
 
         let modeRaw = UserDefaults.standard.string(forKey: "saveMode") ?? SaveMode.saveToFolder.rawValue
         self.saveMode = SaveMode(rawValue: modeRaw) ?? .saveToFolder
@@ -279,6 +285,16 @@ class ScreenshotManager: ObservableObject {
         try? task.run()
         task.waitUntilExit()
         restartScreencaptureUI()
+    }
+
+    /// Apply the user's `showScreenshotThumbnail` preference to macOS's screencapture
+    /// default. Called on launch and whenever the toggle flips.
+    func applyScreenshotThumbnail() {
+        if showScreenshotThumbnail {
+            restoreScreenshotThumbnail()
+        } else {
+            disableScreenshotThumbnail()
+        }
     }
 
     /// Disable the floating screenshot thumbnail so screenshots land in the chosen folder
@@ -751,6 +767,11 @@ struct MenuBarView: View {
 
             // ── Preferences ──
             VStack(spacing: 0) {
+                SettingToggle(
+                    icon: "rectangle.on.rectangle",
+                    label: "Show floating thumbnail",
+                    isOn: $manager.showScreenshotThumbnail
+                )
                 SettingToggle(
                     icon: "sunrise",
                     label: "Launch at login",
