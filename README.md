@@ -6,6 +6,10 @@
 
 Native macOS menu bar app that makes the screenshot keyboard shortcut do something useful: copy the image to your clipboard instantly, auto-rename it with the text it contains, and either save it to a folder or auto-delete it.
 
+<br />
+
+<img src="screenshot.png" width="320" alt="ScreenSnagger menu bar popover" />
+
 </div>
 
 ---

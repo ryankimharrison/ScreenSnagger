@@ -638,6 +638,7 @@ struct MenuBarView: View {
     @State private var recentsExpanded = false
     @State private var showModeInfo = false
     @State private var showPrefsInfo = false
+    @AppStorage("hasSeenWelcome") private var hasSeenWelcome: Bool = false
 
     private var visibleRecents: [ScreenshotEntry] {
         let limit = recentsExpanded ? 10 : 3
@@ -721,6 +722,86 @@ struct MenuBarView: View {
     }
 
     var body: some View {
+        if !hasSeenWelcome {
+            welcomeView
+        } else {
+            mainView
+        }
+    }
+
+    private var welcomeView: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.15))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.accentColor)
+            }
+            .padding(.top, 16)
+
+            Text("Welcome to ScreenSnagger")
+                .font(.system(size: 14, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 10) {
+                welcomeBullet(
+                    icon: "doc.on.clipboard",
+                    title: "Screenshots go straight to your clipboard.",
+                    body: "ScreenSnagger turns off the floating thumbnail in the bottom-right corner so screenshots save and copy instantly. You can re-enable it in preferences."
+                )
+                welcomeBullet(
+                    icon: "folder",
+                    title: "macOS will ask permission to access folders.",
+                    body: "The app needs to read and rename screenshots from your Desktop (auto-delete mode) or the folder you pick (save mode). Allow the prompt when it appears — that's one tap per folder, then never again."
+                )
+                welcomeBullet(
+                    icon: "keyboard",
+                    title: "Use ⌘⇧4 or ⌘⇧3 as usual.",
+                    body: "Take screenshots the normal way. ScreenSnagger handles the rest from the menu bar."
+                )
+            }
+            .padding(.horizontal, 16)
+
+            Button(action: { withAnimation { hasSeenWelcome = true } }) {
+                Text("Got it")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 14)
+            .padding(.top, 4)
+        }
+        .frame(width: 320)
+    }
+
+    private func welcomeBullet(icon: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(.accentColor)
+                .frame(width: 18, alignment: .center)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(body)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var mainView: some View {
         VStack(spacing: 0) {
 
             // Header ──
