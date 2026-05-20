@@ -1,0 +1,15 @@
+# Xcode
+*.xcodeproj/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
+
+# Swift / SPM (not used, but defensive)
+.build/
+.swiftpm/
+Packages/
+Package.resolved
