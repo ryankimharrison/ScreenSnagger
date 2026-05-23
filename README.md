@@ -27,17 +27,32 @@ The macOS screenshot flow is full of friction: file lands on Desktop with a usel
 - **No floating thumbnail.** Disables macOS's built-in screenshot preview so the file lands instantly and clipboard fills immediately. Toggle it back on in preferences if you miss the markup affordance.
 - **No notifications, no Dock icon, no preferences window.** Single popover from the menu bar. One job, done right.
 
-## Install
+## Install (no Xcode, no command line)
 
-### The easy way (precompiled)
+You don't need to be a developer or have Xcode installed. Just download and drag.
 
-Download the latest `ScreenSnagger.zip` from the [Releases page](../../releases) (or ask the maintainer for a build), unzip, and drag `ScreenSnagger.app` to `/Applications`.
+**Requirements**
+- macOS 26 (Tahoe) or newer. The UI uses Liquid Glass, which is macOS 26-only — it will not launch on Sequoia or older.
 
-First launch: macOS will block the unsigned app. Open **System Settings → Privacy & Security**, scroll to the *"ScreenSnagger was blocked"* notice, click **Open Anyway**, confirm with Touch ID / password.
+**Steps**
 
-Click the camera icon in the menu bar to choose a save mode and folder.
+1. **Download** [`ScreenSnagger.zip`](https://github.com/ryankimharrison/ScreenSnagger/releases/latest/download/ScreenSnagger.zip) from the [latest release](https://github.com/ryankimharrison/ScreenSnagger/releases/latest).
+2. **Unzip** it (double-click in Finder).
+3. **Drag `ScreenSnagger.app` into `/Applications`.**
+4. **Open it the first time by right-clicking → Open** (not double-click). macOS will warn that the app is from an unidentified developer — click **Open**.
+   - If that doesn't work, open **System Settings → Privacy & Security**, scroll down to *"ScreenSnagger was blocked from use because it is not from an identified developer"*, click **Open Anyway**, then re-launch.
+5. **Done.** Look for the ScreenSnagger logo in your menu bar (top-right of your screen). Click it to pick a save mode and folder.
 
-### From source
+**Why is it unsigned?**
+No Apple Developer ID (yet). The one-time right-click-Open is the only friction; subsequent launches behave like any other app.
+
+**Permissions you may see prompts for**
+- **Folder access (Desktop / Downloads / Documents).** macOS prompts the first time the app reads or writes to one of these. Allow it.
+- **Login item.** ScreenSnagger registers itself as a login item by default so it starts when you log in. You can turn this off in its preferences.
+
+That's it. No Accessibility permission, no Screen Recording permission, no developer tools, no Homebrew, no SDK.
+
+### Building from source (optional, for developers)
 
 ```bash
 git clone git@github.com:ryankimharrison/ScreenSnagger.git
@@ -47,7 +62,7 @@ xcodebuild -project ScreenSnagger.xcodeproj -scheme ScreenSnagger -configuration
 open ~/Library/Developer/Xcode/DerivedData/ScreenSnagger-*/Build/Products/Release/ScreenSnagger.app
 ```
 
-Requires Xcode 26+ and macOS 26 (Tahoe). The UI uses Liquid Glass (`.glassEffect()`), which is macOS 26-only.
+Requires Xcode 26+ and macOS 26 (Tahoe).
 
 ## How it works
 

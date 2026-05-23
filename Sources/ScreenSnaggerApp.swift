@@ -12,7 +12,10 @@ struct ScreenSnaggerApp: App {
             MenuBarView()
                 .environmentObject(appDelegate.screenshotManager)
         } label: {
-            Image(systemName: "camera.viewfinder")
+            Image("MenuBarIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 18, height: 18)
         }
         .menuBarExtraStyle(.window)
     }
